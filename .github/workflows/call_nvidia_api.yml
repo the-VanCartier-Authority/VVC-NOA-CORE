@@ -29,7 +29,7 @@ jobs:
         run: |
           python -c "
           import os, requests, json
-          from glm_coder_instructions import NVIDIA_BASE_URL, get_payload
+          from glm_coder_instructions import NVIDIA_CHAT_ENDPOINT, get_payload
 
           api_key = os.getenv('NVIDIA_API_KEY')
           if not api_key:
@@ -45,7 +45,7 @@ jobs:
           payload = get_payload(prompt)
           print(f'🚀 Enviando petición a z-ai/glm-5-3...')
           
-          response = requests.post(NVIDIA_BASE_URL, headers=headers, json=payload)
+          response = requests.post(NVIDIA_CHAT_ENDPOINT, headers=headers, json=payload)
           
           if response.status_code == 200:
               res_data = response.json()
@@ -54,4 +54,3 @@ jobs:
           else:
               print(f'❌ Error {response.status_code}: {response.text}')
           "
-          
