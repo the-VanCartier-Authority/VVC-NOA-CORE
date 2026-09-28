@@ -4,7 +4,9 @@ The Van Cartier Authority
 """
 
 MODEL_ID = "z-ai/glm-5-3"
-NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+# URL base oficial OpenAI-compatible de NVIDIA NIM
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+NVIDIA_CHAT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 SYSTEM_PROMPT = """
 Eres el motor de desarrollo y arquitectura de software de VVC-NOA (The Van Cartier Authority).
@@ -27,4 +29,4 @@ def get_payload(user_prompt: str) -> dict:
         "max_tokens": 2048,
         "stream": False
     }
-  
+    
