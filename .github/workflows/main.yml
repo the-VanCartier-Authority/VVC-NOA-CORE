@@ -1,0 +1,11 @@
+- name: Iniciar Backend y Probar Endpoint
+  env:
+    NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+  run: |
+    pip install -r requirements.txt
+    python main.py &
+    sleep 3
+    curl -X POST "http://127.0.0.1:8000/api/v1/generate" \
+         -H "Content-Type: application/json" \
+         -d '{"prompt": "Test de integracion desde GitHub Actions"}'
+         
