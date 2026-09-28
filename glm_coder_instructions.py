@@ -1,11 +1,10 @@
 """
-VVC-NOA :: Operating Guidelines for z-ai/glm-5-3
+VVC-NOA :: Operating Guidelines for NVIDIA NIM Models
 The Van Cartier Authority
 """
 
-MODEL_ID = "z-ai/glm-5-3"
-# URL base oficial OpenAI-compatible de NVIDIA NIM
-NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+# Modelo oficial de respuesta garantizada
+MODEL_ID = "nvidia/nemotron-3.5-lightning-30b-a3b"
 NVIDIA_CHAT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 SYSTEM_PROMPT = """
