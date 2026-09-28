@@ -28,24 +28,26 @@ jobs:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
           python -c "
-          import os, requests, json
-          from glm_coder_instructions import NVIDIA_CHAT_ENDPOINT, get_payload
+          import os, requests
+          from glm_coder_instructions import get_payload
 
           api_key = os.getenv('NVIDIA_API_KEY')
           if not api_key:
               print('❌ Error: Configura NVIDIA_API_KEY en los Secrets del repositorio.')
               exit(1)
 
-          prompt = '${{ github.event.inputs.prompt }}'
+          endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions'
+          prompt = '''${{ github.event.inputs.prompt }}'''
+          
           headers = {
               'Authorization': f'Bearer {api_key}',
               'Content-Type': 'application/json'
           }
           
           payload = get_payload(prompt)
-          print(f'🚀 Enviando petición a z-ai/glm-5-3...')
+          print(f'🚀 Enviando petición a {payload[\"model\"]}...')
           
-          response = requests.post(NVIDIA_CHAT_ENDPOINT, headers=headers, json=payload)
+          response = requests.post(endpoint, headers=headers, json=payload)
           
           if response.status_code == 200:
               res_data = response.json()
@@ -54,3 +56,4 @@ jobs:
           else:
               print(f'❌ Error {response.status_code}: {response.text}')
           "
+          
