@@ -1,0 +1,50 @@
+{
+  "default_provider": "nvidia",
+  "default_model": "z-ai/glm-5-3",
+  "rt_light_default": "gemma-2b-it.onnx",
+  "providers": {
+    "nvidia": {
+      "name": "NVIDIA Build Cloud (NIM)",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key_env": "NVIDIA_API_KEY",
+      "models": [
+        {
+          "id": "z-ai/glm-5-3",
+          "name": "GLM 5.3 (Code & Reasoning)",
+          "context_window": 1000000,
+          "supports_tools": true,
+          "is_free": true
+        },
+        {
+          "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "name": "Nemotron 3.5 Lightning (General & Agent)",
+          "context_window": 131072,
+          "supports_tools": true,
+          "is_free": true
+        },
+        {
+          "id": "poolside/laguna-xs-2.1",
+          "name": "Laguna XS 2.1 (Terminal / SWE-bench)",
+          "context_window": 32768,
+          "supports_tools": true,
+          "is_free": true
+        }
+      ]
+    },
+    "rt_light": {
+      "name": "Local Edge / RT Light Node",
+      "models": [
+        {
+          "id": "gemma-2b-it.onnx",
+          "name": "Gemma 2B IT (ONNX)"
+        }
+      ]
+    },
+    "manual": {
+      "name": "Custom Endpoint / Manual Override",
+      "base_url": "",
+      "model_id": "",
+      "api_key": ""
+    }
+  }
+}
