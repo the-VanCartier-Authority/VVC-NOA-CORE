@@ -28,4 +28,3 @@ def get_payload(user_prompt: str) -> dict:
         "max_tokens": 2048,
         "stream": False
     }
-    
