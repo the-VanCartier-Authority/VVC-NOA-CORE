@@ -1,10 +1,16 @@
-name: Test FastAPI Backend
+name: Test Backend FastAPI (Nemotron 3.5)
 
+# Se dispara manualmente desde la pestaña Actions
 on:
   workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Consulta de prueba para el Backend'
+        required: true
+        default: 'Confirma que VVC-NOA-CORE responde 200 OK.'
 
 jobs:
-  test-backend:
+  test-and-validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -15,13 +21,35 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Iniciar Backend y Probar Endpoint
+      - name: Instalar Dependencias del Backend
+        run: pip install fastapi uvicorn requests pydantic websockets
+
+      - name: Iniciar Backend en Segundo Plano
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
-          pip install -r requirements.txt
-          python main.py &
-          sleep 5
+          # Asegúrate de que main.py esté en la raíz del repo
+          if [ ! -f main.py ]; then
+            echo "❌ Error: main.py no encontrado."
+            exit 1
+          fi
+          # Inicia el servidor y guarda el PID
+          uvicorn main:app --host 127.0.0.1 --port 8000 &
+          echo $! > server.pid
+          # Espera unos segundos a que el servidor esté listo
+          sleep 10
+
+      - name: Probar Endpoint /api/v1/generate
+        run: |
+          # Llamada curl de prueba
           curl -X POST "http://127.0.0.1:8000/api/v1/generate" \
                -H "Content-Type: application/json" \
-               -d '{"prompt": "Test de integracion desde GitHub Actions"}'
+               -d '{"prompt": "${{ github.event.inputs.prompt }}"}'
+
+      - name: Detener Servidor
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid)
+            echo "✅ Servidor detenido correctamente."
+          fi
