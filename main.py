@@ -1,76 +1,78 @@
 import os
 import json
-import asyncio
-from typing import Dict, Any
-from fastapi import FastAPI, HTTPException, Security, Depends
-from fastapi.security import APIKeyHeader
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 import requests
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 
-app = FastAPI(
-    title="VVC-NOA Core Backend",
-    version="1.0.2"
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="VVC-NOA Core Backend", version="1.0.3")
 
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
-APP_API_KEY = os.getenv("APP_API_KEY", "vvc-secret-key-2026") # Define tu clave segura aquí
+APP_API_KEY = os.getenv("APP_API_KEY", "vvc-secret-key-2026")
 NVIDIA_CHAT_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+@app.websocket("/ws/generate")
+async def websocket_generate(websocket: WebSocket):
+    # 1. Validar autenticación
+    api_key = websocket.query_params.get("api_key")
+    if api_key != APP_API_KEY:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
 
-async def verify_api_key(api_key: str = Security(api_key_header)):
-    if not api_key or api_key != APP_API_KEY:
-        raise HTTPException(
-            status_code=403, 
-            detail="Acceso no autorizado. API Key inválida o faltante."
-        )
-    return api_key
-
-class PromptRequest(BaseModel):
-    prompt: str = Field(...)
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "system": "VVC-NOA-CORE"}
-
-@app.post("/api/v1/generate")
-async def generate_code(
-    request: PromptRequest, 
-    authenticated: str = Depends(verify_api_key)
-):
-    if not NVIDIA_API_KEY:
-        raise HTTPException(status_code=500, detail="NVIDIA_API_KEY no configurada.")
-
-    headers = {
-        "Authorization": f"Bearer {NVIDIA_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
-        "messages": [{"role": "user", "content": request.prompt}],
-        "temperature": 0.2,
-        "max_tokens": 1024
-    }
+    await websocket.accept()
 
     try:
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None, 
-            lambda: requests.post(NVIDIA_CHAT_ENDPOINT, headers=headers, json=payload, timeout=(10, 120))
-        )
-        if response.status_code == 200:
-            content = response.json()["choices"][0]["message"]["content"]
-            return {"status": "success", "output": content}
-        else:
-            raise HTTPException(status_code=response.status_code, detail=response.text)
+        while True:
+            # 2. Recibir el prompt del cliente Flutter
+            data_raw = await websocket.receive_text()
+            data = json.loads(data_raw)
+            prompt = data.get("prompt", "")
+
+            if not prompt:
+                continue
+
+            headers = {
+                "Authorization": f"Bearer {NVIDIA_API_KEY}",
+                "Content-Type": "application/json",
+                "Accept": "text/event-stream"
+            }
+
+            payload = {
+                "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2,
+                "max_tokens": 1024,
+                "stream": True
+            }
+
+            # 3. Petición en streaming a NVIDIA NIM
+            response = requests.post(
+                NVIDIA_CHAT_ENDPOINT,
+                headers=headers,
+                json=payload,
+                stream=True,
+                timeout=(10, 60)
+            )
+
+            # 4. Transmitir línea por línea (tokens) al cliente móvil
+            for line in response.iter_lines():
+                if line:
+                    decoded_line = line.decode('utf-8')
+                    if decoded_line.startswith("data: "):
+                        content = decoded_line[6:]
+                        if content == "[DONE]":
+                            break
+                        try:
+                            json_chunk = json.loads(content)
+                            delta = json_chunk["choices"][0]["delta"].get("content", "")
+                            if delta:
+                                await websocket.send_json({"type": "token", "content": delta})
+                        except json.JSONDecodeError:
+                            continue
+
+            # Notificar fin de mensaje
+            await websocket.send_json({"type": "end"})
+
+    except WebSocketDisconnect:
+        print("Cliente WebSocket desconectado")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await websocket.send_json({"type": "error", "content": str(e)})
+        await websocket.close()
