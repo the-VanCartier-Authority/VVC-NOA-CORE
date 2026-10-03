@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../helpers/database_helper.dart';
 import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -11,31 +12,66 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ApiService _apiService = ApiService();
-  final List<Map<String, String>> _messages = [];
+  List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
+
+  Future<void> _loadMessages() async {
+    final savedMessages = await DatabaseHelper.instance.getMessages();
+    setState(() {
+      _messages = savedMessages;
+    });
+  }
 
   void _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _messages.add({'sender': 'user', 'text': text});
-      _isLoading = true;
-    });
     _controller.clear();
 
-    final response = await _apiService.sendPrompt(text);
+    // 1. Guardar y mostrar mensaje del usuario
+    await DatabaseHelper.instance.insertMessage('user', text);
+    await _loadMessages();
 
     setState(() {
-      _messages.add({'sender': 'bot', 'text': response});
+      _isLoading = true;
+    });
+
+    // 2. Consultar al backend en Render
+    final response = await _apiService.sendPrompt(text);
+
+    // 3. Guardar y mostrar respuesta del bot
+    await DatabaseHelper.instance.insertMessage('bot', response);
+    await _loadMessages();
+
+    setState(() {
       _isLoading = false;
     });
+  }
+
+  void _clearChat() async {
+    await DatabaseHelper.instance.clearHistory();
+    await _loadMessages();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('VVC-NOA Assistant')),
+      appBar: AppBar(
+        title: const Text('VVC-NOA Assistant'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _clearChat,
+            tooltip: 'Borrar historial',
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
