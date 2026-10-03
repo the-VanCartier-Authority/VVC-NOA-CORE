@@ -1,8 +1,10 @@
-import 'dart0:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
   static const String baseUrl = 'https://vvc-noa-core.onrender.com';
+  // Usa la misma clave configurada en APP_API_KEY de Render
+  static const String appApiKey = 'vvc-secret-key-2026';
 
   Future<String> sendPrompt(String prompt) async {
     final url = Uri.parse('$baseUrl/api/v1/generate');
@@ -10,7 +12,10 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': appApiKey,
+        },
         body: jsonEncode({'prompt': prompt}),
       );
 
