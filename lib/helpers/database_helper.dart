@@ -97,3 +97,15 @@ class DatabaseHelper {
     );
   }
 }
+
+  // --- ELIMINACIÓN DE SESIONES ---
+  Future<void> deleteSession(String sessionId) async {
+    final db = await instance.database;
+    // La eliminación en 'messages' se ejecuta automáticamente por ON DELETE CASCADE
+    await db.delete(
+      'sessions',
+      where: 'id = ?',
+      whereArgs: [sessionId],
+    );
+  }
+
